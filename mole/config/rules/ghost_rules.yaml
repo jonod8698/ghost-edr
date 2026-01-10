@@ -1,0 +1,340 @@
+# Ghost EDR Custom Detection Rules
+# High-fidelity detections for container runtime threats
+
+#=============================================================================
+# MACROS
+#=============================================================================
+
+- macro: ghost_container
+  condition: container.id != host and container.name != "ghost-mole"
+
+- macro: shell_binaries
+  condition: proc.name in (bash, sh, dash, zsh, ksh, tcsh, csh, fish, ash)
+
+- macro: network_tool_binaries
+  condition: proc.name in (nc, ncat, netcat, nmap, socat, curl, wget, telnet)
+
+- macro: miner_binaries
+  condition: proc.name in (xmrig, cpuminer, cgminer, bfgminer, minerd, ethminer, ccminer, nbminer, t-rex, gminer, lolminer, phoenixminer)
+
+- macro: spawned_process
+  condition: evt.type in (execve, execveat) and evt.dir = <
+
+#=============================================================================
+# LISTS (unused - inline values used in conditions)
+#=============================================================================
+
+#=============================================================================
+# RULES: REVERSE SHELLS
+#=============================================================================
+
+- rule: Ghost EDR - Reverse Shell Detected
+  desc: Detects reverse shell by monitoring STDIN/STDOUT redirection to network socket
+  condition: >
+    ghost_container and
+    evt.type = dup and
+    evt.dir = < and
+    fd.num in (0, 1, 2) and
+    fd.type in (ipv4, ipv6)
+  output: >
+    Reverse shell detected
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    process=%proc.name
+    cmdline=%proc.cmdline
+    parent=%proc.pname
+    connection=%fd.name
+    user=%user.name)
+  priority: CRITICAL
+  tags: [ghost-edr, reverse-shell, network, mitre_execution, T1059]
+
+- rule: Ghost EDR - Netcat Reverse Shell
+  desc: Netcat with -e flag (shell execution)
+  condition: >
+    ghost_container and
+    spawned_process and
+    proc.name in (nc, ncat, netcat) and
+    (proc.cmdline contains " -e " or proc.cmdline contains " -c ")
+  output: >
+    Netcat reverse shell detected
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: CRITICAL
+  tags: [ghost-edr, reverse-shell, netcat, mitre_execution, T1059]
+
+#=============================================================================
+# RULES: CRYPTO MINERS
+#=============================================================================
+
+- rule: Ghost EDR - Crypto Miner Binary Detected
+  desc: Known cryptocurrency mining binary executed
+  condition: >
+    ghost_container and
+    spawned_process and
+    miner_binaries
+  output: >
+    Cryptocurrency miner detected
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    process=%proc.name
+    cmdline=%proc.cmdline
+    parent=%proc.pname
+    user=%user.name)
+  priority: CRITICAL
+  tags: [ghost-edr, cryptominer, mitre_impact, T1496]
+
+- rule: Ghost EDR - Stratum Protocol Detected
+  desc: Stratum mining protocol communication detected
+  condition: >
+    ghost_container and
+    evt.type in (sendto, write) and
+    fd.type in (ipv4, ipv6) and
+    (evt.buffer contains "stratum" or evt.buffer contains "mining.subscribe")
+  output: >
+    Stratum mining protocol detected
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    process=%proc.name
+    connection=%fd.name
+    user=%user.name)
+  priority: CRITICAL
+  tags: [ghost-edr, cryptominer, stratum, mitre_impact, T1496]
+
+- rule: Ghost EDR - Mining Pool Connection
+  desc: Network connection to common mining pool ports
+  condition: >
+    ghost_container and
+    evt.type = connect and
+    fd.type in (ipv4, ipv6) and
+    fd.rport in (3333, 4444, 5555, 7777, 8888, 9999, 14444, 14433, 45560)
+  output: >
+    Connection to suspected mining pool
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    process=%proc.name
+    destination=%fd.name
+    port=%fd.rport
+    user=%user.name)
+  priority: WARNING
+  tags: [ghost-edr, cryptominer, network, mitre_impact, T1496]
+
+#=============================================================================
+# RULES: CONTAINER ESCAPE
+#=============================================================================
+
+- rule: Ghost EDR - Container Escape via release_agent
+  desc: Attempt to escape container via cgroup release_agent
+  condition: >
+    ghost_container and
+    open_write and
+    fd.name endswith "release_agent"
+  output: >
+    Container escape attempt via release_agent
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    file=%fd.name
+    process=%proc.name
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: CRITICAL
+  tags: [ghost-edr, container-escape, cgroup, mitre_privilege_escalation, T1611]
+
+- rule: Ghost EDR - Nsenter Execution
+  desc: nsenter command execution (namespace manipulation)
+  condition: >
+    ghost_container and
+    spawned_process and
+    proc.name = nsenter
+  output: >
+    Nsenter execution detected
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: CRITICAL
+  tags: [ghost-edr, container-escape, namespace, mitre_privilege_escalation, T1611]
+
+- rule: Ghost EDR - Mount in Privileged Container
+  desc: Mount command in privileged container (potential escape)
+  condition: >
+    ghost_container and
+    spawned_process and
+    proc.name = mount and
+    container.privileged = true
+  output: >
+    Mount in privileged container
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: WARNING
+  tags: [ghost-edr, container-escape, mount, mitre_privilege_escalation, T1611]
+
+- rule: Ghost EDR - Kernel Module Load
+  desc: Attempt to load kernel module from container
+  condition: >
+    ghost_container and
+    spawned_process and
+    proc.name in (insmod, modprobe)
+  output: >
+    Kernel module load attempt
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: CRITICAL
+  tags: [ghost-edr, container-escape, kernel, mitre_privilege_escalation, T1611]
+
+- rule: Ghost EDR - Docker Socket Access
+  desc: Process accessing Docker socket inside container
+  condition: >
+    ghost_container and
+    (open_read or open_write) and
+    fd.name = /var/run/docker.sock
+  output: >
+    Docker socket access from container
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    process=%proc.name
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: WARNING
+  tags: [ghost-edr, container-escape, docker-socket, mitre_privilege_escalation, T1611]
+
+#=============================================================================
+# RULES: SUSPICIOUS PROCESSES
+#=============================================================================
+
+- rule: Ghost EDR - Package Manager in Running Container
+  desc: Package manager execution in running container
+  condition: >
+    ghost_container and
+    spawned_process and
+    proc.name in (apt, apt-get, yum, dnf, apk, pip, pip3, npm, gem, cargo)
+  output: >
+    Package manager in container
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    package_manager=%proc.name
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: WARNING
+  tags: [ghost-edr, supply-chain, package-manager, mitre_execution, T1059]
+
+- rule: Ghost EDR - Download and Execute Pattern
+  desc: Downloading and executing from pipe or temp file
+  condition: >
+    ghost_container and
+    spawned_process and
+    (
+      (proc.name in (curl, wget) and proc.cmdline contains "|" and proc.cmdline contains "sh") or
+      (proc.name in (curl, wget) and proc.cmdline contains " -O /tmp/") or
+      (proc.name in (curl, wget) and proc.cmdline contains " -o /tmp/")
+    )
+  output: >
+    Download and execute pattern
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: CRITICAL
+  tags: [ghost-edr, malware, download-exec, mitre_execution, T1105]
+
+- rule: Ghost EDR - Sensitive File Read
+  desc: Read of sensitive files like /etc/shadow, SSH keys
+  condition: >
+    ghost_container and
+    open_read and
+    (
+      fd.name = /etc/shadow or
+      fd.name startswith /root/.ssh/ or
+      fd.name contains "id_rsa" or
+      fd.name contains "id_ed25519" or
+      fd.name endswith ".pem" or
+      fd.name contains "/credentials" or
+      fd.name contains "/.aws/credentials"
+    )
+  output: >
+    Sensitive file access
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    file=%fd.name
+    process=%proc.name
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: WARNING
+  tags: [ghost-edr, credential-access, sensitive-files, mitre_credential_access, T1552]
+
+- rule: Ghost EDR - Process Injection via Ptrace
+  desc: ptrace attach to another process
+  condition: >
+    ghost_container and
+    evt.type = ptrace and
+    evt.arg.request in (PTRACE_ATTACH, PTRACE_SEIZE)
+  output: >
+    Process injection via ptrace
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    process=%proc.name
+    target_pid=%evt.arg.pid
+    user=%user.name)
+  priority: CRITICAL
+  tags: [ghost-edr, injection, ptrace, mitre_defense_evasion, T1055]
+
+- rule: Ghost EDR - Bash History Deletion
+  desc: Attempt to clear bash history
+  condition: >
+    ghost_container and
+    (
+      (spawned_process and proc.name = unlink and proc.cmdline contains ".bash_history") or
+      (spawned_process and proc.name = rm and proc.cmdline contains ".bash_history") or
+      (open_write and fd.name endswith ".bash_history" and evt.arg.flags contains O_TRUNC)
+    )
+  output: >
+    Bash history deletion
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    process=%proc.name
+    cmdline=%proc.cmdline
+    user=%user.name)
+  priority: WARNING
+  tags: [ghost-edr, anti-forensics, mitre_defense_evasion, T1070]
+
+- rule: Ghost EDR - Hidden File Created
+  desc: Creation of hidden file in temp or writable directory
+  condition: >
+    ghost_container and
+    open_write and
+    (
+      (fd.name startswith /tmp/. and fd.name != /tmp/.X11-unix) or
+      (fd.name startswith /dev/shm/.) or
+      (fd.name startswith /var/tmp/.)
+    ) and
+    not fd.name endswith ".lock"
+  output: >
+    Hidden file created
+    (container_id=%container.id
+    container_name=%container.name
+    image=%container.image.repository
+    file=%fd.name
+    process=%proc.name
+    user=%user.name)
+  priority: WARNING
+  tags: [ghost-edr, suspicious-file, mitre_defense_evasion, T1564]

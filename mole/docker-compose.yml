@@ -1,0 +1,55 @@
+services:
+  falco:
+    image: falcosecurity/falco:0.39.2
+    container_name: ghost-mole
+    privileged: true
+    pid: host
+    network_mode: host
+
+    volumes:
+      # Required for syscall monitoring
+      - /var/run/docker.sock:/host/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /etc:/host/etc:ro
+
+      # eBPF support
+      - /sys/kernel/tracing:/sys/kernel/tracing:ro
+      - /sys/kernel/debug:/sys/kernel/debug:ro
+
+      # Custom configuration
+      - ./config/falco.yaml:/etc/falco/falco.yaml:ro
+      - ./config/rules:/etc/falco/rules.d:ro
+
+    environment:
+      - HOST_ROOT=/host
+      - FALCO_BPF_PROBE=""
+
+    command:
+      - /usr/bin/falco
+      - -o
+      - engine.kind=modern_ebpf
+      - -o
+      - json_output=true
+      - -o
+      - json_include_output_property=true
+      - -o
+      - json_include_tags_property=true
+      - -o
+      - http_output.enabled=true
+      - -o
+      - http_output.url=http://host.docker.internal:8765/falco
+      - -o
+      - log_level=info
+
+    healthcheck:
+      test: ["CMD", "test", "-e", "/var/run/falco.pid"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    restart: unless-stopped
+
+    labels:
+      ghost-edr.component: "mole"
+      ghost-edr.version: "1.0.0"

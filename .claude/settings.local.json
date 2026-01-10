@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:falco.org)",
+      "Bash(chmod:*)",
+      "Bash(docker compose:*)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(ghost-enforcer:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}

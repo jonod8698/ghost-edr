@@ -1,0 +1,58 @@
+[
+  {
+    "uuid": "abc123",
+    "output": "Reverse shell detected (container_id=abc123456789 container_name=test-container image=alpine process=sh cmdline=sh -i connection=192.168.1.1:4444 user=root)",
+    "priority": "Critical",
+    "rule": "Ghost EDR - Reverse Shell Detected",
+    "time": "2025-01-10T12:00:00.000000000Z",
+    "output_fields": {
+      "container.id": "abc123456789",
+      "container.name": "test-container",
+      "container.image.repository": "alpine",
+      "proc.name": "sh",
+      "proc.cmdline": "sh -i",
+      "fd.name": "192.168.1.1:4444",
+      "user.name": "root"
+    },
+    "source": "syscall",
+    "tags": ["ghost-edr", "reverse-shell", "network", "mitre_execution", "T1059"],
+    "hostname": "docker-desktop"
+  },
+  {
+    "uuid": "def456",
+    "output": "Cryptocurrency miner detected (container_id=def456789abc container_name=miner-container image=ubuntu process=xmrig cmdline=xmrig --pool pool.example.com parent=bash user=nobody)",
+    "priority": "Critical",
+    "rule": "Ghost EDR - Crypto Miner Binary Detected",
+    "time": "2025-01-10T12:01:00.000000000Z",
+    "output_fields": {
+      "container.id": "def456789abc",
+      "container.name": "miner-container",
+      "container.image.repository": "ubuntu",
+      "proc.name": "xmrig",
+      "proc.cmdline": "xmrig --pool pool.example.com",
+      "proc.pname": "bash",
+      "user.name": "nobody"
+    },
+    "source": "syscall",
+    "tags": ["ghost-edr", "cryptominer", "mitre_impact", "T1496"],
+    "hostname": "docker-desktop"
+  },
+  {
+    "uuid": "ghi789",
+    "output": "Package manager in container (container_id=ghi789abcdef container_name=app-container image=node package_manager=npm cmdline=npm install express user=node)",
+    "priority": "Warning",
+    "rule": "Ghost EDR - Package Manager in Running Container",
+    "time": "2025-01-10T12:02:00.000000000Z",
+    "output_fields": {
+      "container.id": "ghi789abcdef",
+      "container.name": "app-container",
+      "container.image.repository": "node",
+      "proc.name": "npm",
+      "proc.cmdline": "npm install express",
+      "user.name": "node"
+    },
+    "source": "syscall",
+    "tags": ["ghost-edr", "supply-chain", "package-manager", "mitre_execution", "T1059"],
+    "hostname": "docker-desktop"
+  }
+]

@@ -1,0 +1,48 @@
+# Ghost EDR - Falco Configuration
+
+# Rules files to load
+rules_files:
+  - /etc/falco/falco_rules.yaml
+  - /etc/falco/rules.d
+
+# Output configuration
+json_output: true
+json_include_output_property: true
+json_include_tags_property: true
+
+# Time format for alerts
+time_format_iso_8601: true
+
+# Log level
+log_level: info
+log_stderr: true
+log_syslog: false
+
+# Priority filter
+priority: warning
+
+# HTTP Output - Primary channel to The Enforcer
+http_output:
+  enabled: true
+  url: "http://host.docker.internal:8765/falco"
+  user_agent: "ghost-edr-mole/1.0"
+  insecure: false
+
+# Standard output (for debugging)
+stdout_output:
+  enabled: true
+
+# File output (disabled)
+file_output:
+  enabled: false
+  keep_alive: false
+  filename: /var/log/falco/alerts.json
+
+# Watch for config changes
+watch_config_files: true
+
+# Buffered outputs
+buffered_outputs: false
+
+# Output timeout
+output_timeout: 2000

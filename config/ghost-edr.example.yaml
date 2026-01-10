@@ -1,0 +1,98 @@
+# Ghost EDR Configuration
+# Copy to ~/.config/ghost-edr/config.yaml
+
+# Logging level (debug, info, warning, error)
+log_level: info
+
+# Dry run mode - log actions but don't execute them
+dry_run: false
+
+# Receiver configuration
+receiver:
+  type: http
+  host: "0.0.0.0"
+  port: 8765
+
+# Shorthand for receiver port
+receiver_port: 8765
+
+# Container runtime (auto-detected if not specified)
+# Options: docker_desktop, orbstack
+runtime_auto_detect: true
+# runtime_type: docker_desktop
+# docker_socket: /var/run/docker.sock
+
+# Default action for alerts that don't match any policy
+default_action: alert
+
+# Global webhook for all alerts (optional)
+# global_webhook_url: "https://hooks.slack.com/services/XXX"
+
+# Containers to never take action on
+excluded_containers:
+  - "ghost-mole"
+  - "ghost-mole-*"
+
+# Prometheus metrics endpoint
+enable_metrics: true
+metrics_port: 9090
+
+# Policy rules (evaluated in order, first match wins)
+policies:
+  # Critical threats - immediate kill
+  - name: critical-threats-kill
+    description: Kill containers for critical security threats
+    priority_min: critical
+    rule_patterns:
+      - "Ghost EDR - Reverse Shell*"
+      - "Ghost EDR - Crypto Miner*"
+      - "Ghost EDR - Container Escape*"
+      - "Ghost EDR - Nsenter*"
+      - "Ghost EDR - Kernel Module*"
+      - "Ghost EDR - Netcat Reverse Shell*"
+      - "Ghost EDR - Download and Execute*"
+      - "Ghost EDR - Process Injection*"
+      - "Ghost EDR - Stratum Protocol*"
+    action: kill
+    cooldown_seconds: 0
+
+  # High priority - quarantine (network isolation)
+  - name: high-threats-quarantine
+    description: Quarantine containers for high priority threats
+    priority_min: high
+    rule_patterns:
+      - "Ghost EDR - Mining Pool Connection*"
+      - "Ghost EDR - Mount in Privileged*"
+      - "Ghost EDR - Shell Spawned from Web*"
+      - "Ghost EDR - Docker Socket Access*"
+      - "Ghost EDR - Sensitive File*"
+    action: quarantine
+    cooldown_seconds: 30
+
+  # Suspicious activity - alert only
+  - name: suspicious-activity-alert
+    description: Alert on suspicious but not critical activity
+    priority_min: warning
+    rule_patterns:
+      - "Ghost EDR - Package Manager*"
+      - "Ghost EDR - Hidden File*"
+      - "Ghost EDR - Bash History*"
+    action: alert
+    cooldown_seconds: 60
+
+  # Development containers - alert only (never kill)
+  - name: dev-containers-alert-only
+    description: Only alert for containers tagged as development
+    container_patterns:
+      - "*-dev"
+      - "*-test"
+      - "dev-*"
+      - "test-*"
+    action: alert
+
+  # Catch-all - alert on anything else
+  - name: default-alert
+    description: Alert on any other matching events
+    priority_min: warning
+    action: alert
+    cooldown_seconds: 120
