@@ -47,7 +47,7 @@ def main() -> int | None:
 @click.option(
     "--port",
     type=int,
-    default=8765,
+    default=8766,
     help="HTTP webhook receiver port",
 )
 def run(
@@ -75,7 +75,7 @@ def run(
         logger.warning("Running in dry-run mode - no actions will be executed")
 
     # Override port if specified
-    if port != 8765:
+    if port != 8766:
         cfg.receiver_port = port
 
     # Create and run daemon

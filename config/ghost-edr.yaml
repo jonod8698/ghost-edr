@@ -1,5 +1,5 @@
 # Ghost EDR Configuration
-# Copy to ~/.config/ghost-edr/config.yaml
+# Used by the enforcer container via docker-compose.yml
 
 # Logging level (debug, info, warning, error)
 log_level: info
@@ -11,10 +11,10 @@ dry_run: false
 receiver:
   type: http
   host: "0.0.0.0"
-  port: 8765
+  port: 8766
 
 # Shorthand for receiver port
-receiver_port: 8765
+receiver_port: 8766
 
 # Container runtime (auto-detected if not specified)
 # Options: docker_desktop, orbstack

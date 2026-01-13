@@ -70,7 +70,7 @@ class ReceiverConfig(BaseModel):
     """Receiver configuration."""
 
     type: str = "http"
-    port: int = 8765
+    port: int = 8766
     host: str = "0.0.0.0"
 
 
@@ -83,7 +83,7 @@ class EnforcerConfig(BaseModel):
 
     # Receiver settings
     receiver: ReceiverConfig = Field(default_factory=ReceiverConfig)
-    receiver_port: int = 8765
+    receiver_port: int = 8766
 
     # Runtime detection
     runtime_auto_detect: bool = True

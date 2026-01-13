@@ -30,7 +30,7 @@ Ghost EDR uses a **Sidecar Mole** architecture:
 └──────────┼──────────────────────────────────────────────────────────┘
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  The Enforcer (container or native)                                 │
+│  The Enforcer (container)                                            │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │  Policy Engine                                                  │ │
 │  │  • Match rules by pattern, priority, container                  │ │
@@ -44,7 +44,6 @@ Ghost EDR uses a **Sidecar Mole** architecture:
 
 - macOS (Apple Silicon or Intel)
 - Docker Desktop or OrbStack
-- Python 3.10+ (only if running Enforcer natively)
 
 ## Quick Start
 

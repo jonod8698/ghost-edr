@@ -24,7 +24,7 @@ priority: warning
 # HTTP Output - Primary channel to The Enforcer
 http_output:
   enabled: true
-  url: "http://host.docker.internal:8765/falco"
+  url: "http://host.docker.internal:8766/falco"
   user_agent: "ghost-edr-mole/1.0"
   insecure: false
 
