@@ -3,46 +3,45 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-CONFIG_DIR="${HOME}/.config/ghost-edr"
 
 echo "=== Starting Ghost EDR ==="
-
-# Check if config exists
-if [[ ! -f "${CONFIG_DIR}/config.yaml" ]]; then
-    echo "Configuration not found. Running install first..."
-    "${SCRIPT_DIR}/install.sh"
-fi
-
-# Start The Mole
 echo ""
-echo "Starting The Mole (Falco)..."
+
 cd "${PROJECT_DIR}/mole"
 
-if docker compose ps 2>/dev/null | grep -q "ghost-mole"; then
-    echo "  The Mole is already running"
-else
-    docker compose up -d
-    echo "  The Mole started"
+# Check if already running
+if docker compose ps 2>/dev/null | grep -q "ghost-enforcer.*Up"; then
+    echo "Ghost EDR is already running"
+    echo ""
+    docker compose ps
+    exit 0
 fi
 
-# Wait for Falco to be ready
+# Start all containers
+echo "Starting Ghost EDR containers..."
+docker compose up -d
+
+# Wait for health checks
 echo ""
-echo "Waiting for Falco to initialize..."
+echo "Waiting for services to be healthy..."
 sleep 5
 
-# Check Falco health
-if docker compose ps 2>/dev/null | grep -q "healthy"; then
-    echo "  Falco is healthy"
+# Show status
+echo ""
+docker compose ps
+
+# Check enforcer health
+echo ""
+echo "Checking Enforcer health..."
+HEALTH=$(curl -s http://localhost:8766/health 2>/dev/null || echo "")
+if [[ -n "$HEALTH" ]]; then
+    echo "  $HEALTH"
 else
-    echo "  Falco is starting (may take a moment)..."
+    echo "  Waiting for Enforcer to start..."
+    sleep 3
+    HEALTH=$(curl -s http://localhost:8766/health 2>/dev/null || echo "Not reachable")
+    echo "  $HEALTH"
 fi
 
-# Start The Enforcer
 echo ""
-echo "Starting The Enforcer..."
-echo "  Config: ${CONFIG_DIR}/config.yaml"
-echo ""
-echo "Press Ctrl+C to stop"
-echo ""
-
-ghost-enforcer run --config "${CONFIG_DIR}/config.yaml"
+echo "Ghost EDR is running. Use 'docker compose logs -f' to follow logs."

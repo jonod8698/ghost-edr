@@ -2,37 +2,27 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-CONFIG_DIR="${HOME}/.config/ghost-edr"
 
 echo "=== Ghost EDR Status ==="
 echo ""
 
-# Check The Mole
-echo "The Mole (Falco):"
 cd "${PROJECT_DIR}/mole"
-if docker compose ps 2>/dev/null | grep -q "ghost-mole"; then
-    STATUS=$(docker compose ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null | grep ghost-mole || echo "  ghost-mole  Unknown")
-    echo "  $STATUS"
-else
-    echo "  Not running"
-fi
 
-# Check The Enforcer
-echo ""
-echo "The Enforcer:"
-if pgrep -f "ghost-enforcer" > /dev/null 2>&1; then
-    echo "  Running (PID: $(pgrep -f 'ghost-enforcer'))"
+# Check containers
+echo "Containers:"
+if docker compose ps 2>/dev/null | grep -q "ghost"; then
+    docker compose ps
 else
-    echo "  Not running"
+    echo "  No Ghost EDR containers running"
 fi
 
 # Check configuration
 echo ""
 echo "Configuration:"
-if [[ -f "${CONFIG_DIR}/config.yaml" ]]; then
-    echo "  ${CONFIG_DIR}/config.yaml (exists)"
+if [[ -f "${PROJECT_DIR}/config/ghost-edr.yaml" ]]; then
+    echo "  ${PROJECT_DIR}/config/ghost-edr.yaml (exists)"
 else
-    echo "  ${CONFIG_DIR}/config.yaml (not found)"
+    echo "  ${PROJECT_DIR}/config/ghost-edr.yaml (not found)"
 fi
 
 # Check Docker runtime
@@ -49,9 +39,14 @@ fi
 # Check Enforcer health endpoint
 echo ""
 echo "Enforcer Health:"
-HEALTH=$(curl -s http://localhost:8765/health 2>/dev/null || echo "")
+HEALTH=$(curl -s http://localhost:8766/health 2>/dev/null || echo "")
 if [[ -n "$HEALTH" ]]; then
     echo "  $HEALTH"
 else
-    echo "  Not reachable (port 8765)"
+    echo "  Not reachable (port 8766)"
 fi
+
+# Show recent logs
+echo ""
+echo "Recent Enforcer Logs:"
+docker logs ghost-enforcer --tail 5 2>/dev/null || echo "  Container not running"
