@@ -5,9 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: ghost-enforcer
 
-    # Docker socket access (read-only for monitoring)
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../config/ghost-edr.yaml:/app/config.yaml:ro
 
     # Security hardening
@@ -28,12 +26,8 @@ services:
         reservations:
           memory: 64M
 
-    # Networking
     ports:
       - "8766:8766"
-
-    environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
 
     command: ["run", "--config", "/app/config.yaml", "--port", "8766"]
 

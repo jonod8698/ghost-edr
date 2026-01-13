@@ -51,15 +51,10 @@ class PolicyEngine:
 
         # Import here to avoid circular imports
         from ghost_enforcer.actions.alert import AlertAction
-        from ghost_enforcer.actions.kill import KillAction
-        from ghost_enforcer.actions.quarantine import QuarantineAction
         from ghost_enforcer.actions.webhook import WebhookAction
 
         self._actions = {
             ActionType.ALERT: AlertAction(self.config, runtime),
-            ActionType.KILL: KillAction(self.config, runtime),
-            ActionType.PAUSE: KillAction(self.config, runtime),  # Pause uses same handler
-            ActionType.QUARANTINE: QuarantineAction(self.config, runtime),
             ActionType.WEBHOOK: WebhookAction(self.config, runtime),
         }
 

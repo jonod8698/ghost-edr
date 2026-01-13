@@ -1,8 +1,6 @@
 # Ghost EDR
 
-**Real-time container security for macOS.** Detects and responds to threats in Docker containers where traditional EDR tools are blind due to virtualization barriers.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+**Real-time container security monitoring for macOS.** Detects threats in Docker containers where traditional EDR tools are blind due to virtualization barriers.
 
 ## Why Ghost EDR?
 
@@ -15,7 +13,7 @@ Ghost EDR uses a **Sidecar Mole** architecture:
 | Component | Location | Role |
 |-----------|----------|------|
 | **The Mole** | Linux VM | Falco-based eBPF monitor that watches syscalls from sibling containers |
-| **The Enforcer** | Host or Container | Policy engine that receives alerts and executes responses |
+| **The Enforcer** | Container | Policy engine that receives alerts and logs security events |
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -30,12 +28,12 @@ Ghost EDR uses a **Sidecar Mole** architecture:
 └──────────┼──────────────────────────────────────────────────────────┘
            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│  The Enforcer (container)                                            │
+│  The Enforcer (container)                                           │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │  Policy Engine                                                  │ │
 │  │  • Match rules by pattern, priority, container                  │ │
-│  │  • Execute actions: alert, kill, quarantine, webhook            │ │
-│  │  • Rate limiting and cooldowns                                  │ │
+│  │  • Log security alerts with context                             │ │
+│  │  • Send webhooks to external systems                            │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -47,9 +45,7 @@ Ghost EDR uses a **Sidecar Mole** architecture:
 
 ## Quick Start
 
-### Option 1: Docker Compose (Recommended)
-
-The simplest way to run Ghost EDR with both components containerized:
+### Docker Compose
 
 ```bash
 cd mole
@@ -69,7 +65,7 @@ This starts:
 curl http://localhost:8766/health
 
 # Expected output:
-# {"status": "healthy", "runtime": "docker_desktop", "policies": 5}
+# {"status": "healthy", "runtime": "docker_desktop", "policies": 4}
 ```
 
 ### Test Detection
@@ -89,14 +85,15 @@ docker logs ghost-enforcer --tail 20
 You should see:
 ```
 Alert received    rule='Ghost EDR - Netcat Reverse Shell'  priority=CRITICAL
-Executing policy action    action=kill    policy=critical-threats-kill
+Executing policy action    action=alert    policy=critical-threats
+SECURITY ALERT    rule='Ghost EDR - Netcat Reverse Shell'  container_name=...
 ```
 
 ## Detection Rules
 
 Ghost EDR includes 15+ high-fidelity detection rules:
 
-### Critical Threats (Default: Kill)
+### Critical Threats
 
 | Rule | Description | MITRE ATT&CK |
 |------|-------------|--------------|
@@ -110,7 +107,7 @@ Ghost EDR includes 15+ high-fidelity detection rules:
 | Download and Execute | curl/wget piped to shell | T1105 |
 | Process Injection (ptrace) | PTRACE_ATTACH to other process | T1055 |
 
-### High Priority Threats (Default: Quarantine)
+### High Priority Threats
 
 | Rule | Description | MITRE ATT&CK |
 |------|-------------|--------------|
@@ -119,7 +116,7 @@ Ghost EDR includes 15+ high-fidelity detection rules:
 | Docker Socket Access | Container accessing Docker socket | T1611 |
 | Sensitive File Read | Access to /etc/shadow, SSH keys, credentials | T1552 |
 
-### Suspicious Activity (Default: Alert)
+### Suspicious Activity
 
 | Rule | Description | MITRE ATT&CK |
 |------|-------------|--------------|
@@ -135,50 +132,39 @@ Configuration file: `config/ghost-edr.yaml`
 # Logging level
 log_level: info
 
-# Dry run mode - log actions but don't execute
-dry_run: false
-
 # Receiver configuration
 receiver:
   type: http
   host: "0.0.0.0"
   port: 8766
 
-# Containers to never take action on
+# Containers to exclude from monitoring
 excluded_containers:
   - "ghost-mole"
   - "ghost-mole-*"
 
 # Policy rules (evaluated in order, first match wins)
 policies:
-  # Critical threats - immediate termination
-  - name: critical-threats-kill
-    description: Kill containers for critical security threats
+  # Critical threats
+  - name: critical-threats
+    description: Alert on critical security threats
     priority_min: critical
     rule_patterns:
       - "Ghost EDR - Reverse Shell*"
       - "Ghost EDR - Crypto Miner*"
       - "Ghost EDR - Container Escape*"
-      - "Ghost EDR - Netcat Reverse Shell*"
-    action: kill
+    action: alert
     cooldown_seconds: 0
 
-  # High priority - network isolation
-  - name: high-threats-quarantine
-    description: Quarantine containers for high priority threats
+  # High priority threats
+  - name: high-threats
+    description: Alert on high priority threats
     priority_min: error
     rule_patterns:
       - "Ghost EDR - Mining Pool Connection*"
       - "Ghost EDR - Docker Socket Access*"
-    action: quarantine
-    cooldown_seconds: 30
-
-  # Development containers - alert only
-  - name: dev-containers-alert-only
-    container_patterns:
-      - "*-dev"
-      - "*-test"
     action: alert
+    cooldown_seconds: 30
 
   # Default catch-all
   - name: default-alert
@@ -191,22 +177,8 @@ policies:
 
 | Action | Description |
 |--------|-------------|
-| `alert` | Log the event (no enforcement) |
-| `kill` | Terminate the container immediately (SIGKILL) |
-| `quarantine` | Disconnect container from all networks |
+| `alert` | Log the security event with full context |
 | `webhook` | POST alert JSON to external URL |
-
-### Enabling Kill/Quarantine
-
-By default, the Enforcer runs with read-only Docker socket access (alert-only mode). To enable enforcement actions, modify `docker-compose.yml`:
-
-```yaml
-enforcer:
-  # Change from read-only to read-write
-  user: root
-  volumes:
-    - /var/run/docker.sock:/var/run/docker.sock  # Remove :ro
-```
 
 ## CLI Reference
 
@@ -287,8 +259,6 @@ ghost-edr/
 │       ├── policy_engine.py       # Alert processing
 │       ├── actions/               # Response actions
 │       │   ├── alert.py
-│       │   ├── kill.py
-│       │   ├── quarantine.py
 │       │   └── webhook.py
 │       └── runtime/               # Container runtime detection
 │           ├── docker_desktop.py
@@ -341,16 +311,6 @@ EOF'
 orb -m ghost-edr-vm sudo systemctl start falco-modern-bpf.service
 ```
 
-### Enforcer can't connect to Docker
-
-```bash
-# Check Docker socket permissions
-ls -la /var/run/docker.sock
-
-# Verify Enforcer can reach Docker
-docker exec ghost-enforcer wget -qO- --spider http://localhost:8766/health
-```
-
 ### No alerts received
 
 1. Verify Falco is running:
@@ -371,16 +331,13 @@ docker exec ghost-enforcer wget -qO- --spider http://localhost:8766/health
      -d '{"rule": "Test", "priority": "Warning", "output_fields": {}}'
    ```
 
-### Kill action fails with "Permission denied"
-
-The Enforcer needs write access to the Docker socket. Modify `docker-compose.yml` to grant write access (see [Enabling Kill/Quarantine](#enablingkillquarantine)).
-
 ## Security Considerations
 
 The Enforcer container is hardened with:
 
 - **Non-root user** (`ghost:1000`)
 - **Read-only filesystem**
+- **Read-only Docker socket** (monitoring only, no container control)
 - **No new privileges** (`no-new-privileges:true`)
 - **All capabilities dropped** (`cap_drop: ALL`)
 - **Resource limits** (256MB memory, 0.5 CPU)

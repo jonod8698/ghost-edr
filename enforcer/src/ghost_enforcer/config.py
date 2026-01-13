@@ -13,9 +13,6 @@ class ActionType(str, Enum):
     """Enforcement action types."""
 
     ALERT = "alert"
-    KILL = "kill"
-    PAUSE = "pause"
-    QUARANTINE = "quarantine"
     WEBHOOK = "webhook"
 
 
@@ -131,8 +128,8 @@ def default_policies() -> list[PolicyRule]:
     """Return default policy rules."""
     return [
         PolicyRule(
-            name="critical-threats-kill",
-            description="Kill containers for critical security threats",
+            name="critical-threats",
+            description="Alert on critical security threats",
             priority_min=Priority.CRITICAL,
             rule_patterns=[
                 "Ghost EDR - Reverse Shell*",
@@ -144,25 +141,25 @@ def default_policies() -> list[PolicyRule]:
                 "Ghost EDR - Download and Execute*",
                 "Ghost EDR - Process Injection*",
             ],
-            action=ActionType.KILL,
+            action=ActionType.ALERT,
             cooldown_seconds=0,
         ),
         PolicyRule(
-            name="high-threats-quarantine",
-            description="Quarantine containers for high priority threats",
-            priority_min=Priority.CRITICAL,
+            name="high-threats",
+            description="Alert on high priority threats",
+            priority_min=Priority.ERROR,
             rule_patterns=[
                 "Ghost EDR - Mining Pool Connection*",
                 "Ghost EDR - Mount in Privileged*",
                 "Ghost EDR - Shell Spawned from Web*",
                 "Ghost EDR - Docker Socket Access*",
             ],
-            action=ActionType.QUARANTINE,
+            action=ActionType.ALERT,
             cooldown_seconds=30,
         ),
         PolicyRule(
-            name="suspicious-activity-alert",
-            description="Alert on suspicious but not critical activity",
+            name="suspicious-activity",
+            description="Alert on suspicious activity",
             priority_min=Priority.WARNING,
             action=ActionType.ALERT,
             cooldown_seconds=60,

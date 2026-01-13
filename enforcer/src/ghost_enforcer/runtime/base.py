@@ -32,46 +32,6 @@ class ContainerRuntime(ABC):
         pass
 
     @abstractmethod
-    def kill_container(self, container_id: str, signal: str = "SIGKILL") -> bool:
-        """Kill a container.
-
-        Args:
-            container_id: Container ID or name
-            signal: Signal to send (default SIGKILL)
-
-        Returns:
-            True if successful, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def pause_container(self, container_id: str) -> bool:
-        """Pause a container.
-
-        Args:
-            container_id: Container ID or name
-
-        Returns:
-            True if successful, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def disconnect_network(
-        self, container_id: str, network: str | None = None
-    ) -> bool:
-        """Disconnect a container from its networks.
-
-        Args:
-            container_id: Container ID or name
-            network: Specific network to disconnect, or None for all
-
-        Returns:
-            True if successful, False otherwise
-        """
-        pass
-
-    @abstractmethod
     def get_container_info(self, container_id: str) -> ContainerInfo | None:
         """Get information about a container.
 
