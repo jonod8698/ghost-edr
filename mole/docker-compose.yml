@@ -15,6 +15,8 @@ services:
       # eBPF support
       - /sys/kernel/tracing:/sys/kernel/tracing:ro
       - /sys/kernel/debug:/sys/kernel/debug:ro
+      - /sys/kernel/btf:/sys/kernel/btf:ro
+      - /sys/fs/bpf:/sys/fs/bpf
 
       # Custom configuration
       - ./config/falco.yaml:/etc/falco/falco.yaml:ro

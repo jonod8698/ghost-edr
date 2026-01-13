@@ -9,7 +9,25 @@
       "Bash(source .venv/bin/activate)",
       "Bash(ghost-enforcer:*)",
       "Bash(curl:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker run:*)",
+      "Bash(orb debug:*)",
+      "Bash(timeout 10 docker run:*)",
+      "Bash(orb create:*)",
+      "Bash(orb -m ghost-edr-vm sudo apt-get update:*)",
+      "Bash(orb -m ghost-edr-vm sudo apt-get:*)",
+      "Bash(orb -m ghost-edr-vm bash -c 'curl -fsSL https://falco.org/repo/falcosecurity-packages.asc | sudo gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg && echo \"\"deb [signed-by=/usr/share/keyrings/falco-archive-keyring.gpg] https://download.falco.org/packages/deb stable main\"\" | sudo tee -a /etc/apt/sources.list.d/falcosecurity.list && sudo apt-get update && sudo apt-get install -y falco')",
+      "Bash(orb -m ghost-edr-vm sudo systemctl status:*)",
+      "Bash(orb -m ghost-edr-vm sudo tee:*)",
+      "Bash(orb -m ghost-edr-vm bash -c 'cat << \"\"EOF\"\" | sudo tee /etc/falco/config.d/ghost-http.yaml\n# Ghost EDR HTTP output configuration\njson_output: true\njson_include_output_property: true\njson_include_tags_property: true\ntime_format_iso_8601: true\n\nhttp_output:\n  enabled: true\n  url: \"\"http://host.internal:8765/falco\"\"\n  user_agent: \"\"ghost-edr-mole/1.0\"\"\n  insecure: true\n\nstdout_output:\n  enabled: true\nEOF\necho \"\"HTTP output configured\"\"')",
+      "Bash(orb -m ghost-edr-vm sudo systemctl restart falco-modern-bpf.service)",
+      "Bash(pgrep:*)",
+      "Bash(lsof:*)",
+      "Bash(orb -m ghost-edr-vm bash -c 'sudo sed -i \"\"s/8765/8766/g\"\" /etc/falco/config.d/ghost-http.yaml && cat /etc/falco/config.d/ghost-http.yaml')",
+      "Bash(docker stop:*)",
+      "Bash(pkill:*)"
     ]
   }
 }

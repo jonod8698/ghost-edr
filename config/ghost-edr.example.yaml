@@ -59,7 +59,7 @@ policies:
   # High priority - quarantine (network isolation)
   - name: high-threats-quarantine
     description: Quarantine containers for high priority threats
-    priority_min: high
+    priority_min: error
     rule_patterns:
       - "Ghost EDR - Mining Pool Connection*"
       - "Ghost EDR - Mount in Privileged*"
